@@ -3,3 +3,4 @@ access.log.2
 config.yml
 ./influxdb
 ./influxdb.conf
+main
