@@ -5,14 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	"github.com/joho/godotenv"
 )
 
 //https://golangdocs.com/reading-files-in-golang
@@ -77,6 +75,38 @@ func parser(line string) (ParsedQuery, error) {
 
 }
 
+// var err = godotenv.Load(".env")
+
+var token = os.Getenv("TOKEN")
+var bucket = os.Getenv("BUCKET")
+var url = os.Getenv("URL")
+var org = os.Getenv("ORG")
+
+// Create a new client using an InfluxDB server base URL and an authentication token
+var client = influxdb2.NewClient(url, token)
+
+// Use blocking write client for writes to desired bucket
+var writeAPI = client.WriteAPIBlocking(org, bucket)
+
+func sendToDb(q ParsedQuery) {
+	pList := q
+	fmt.Println(pList.date)
+
+	// get non-blocking write client
+	// writeAPI := client.WriteAPI(org, bucket)
+
+	// write line protocol
+	p := influxdb2.NewPointWithMeasurement("stat").
+		AddTag("unit", "download").
+		AddField("distro", pList.distro).
+		AddField("date", pList.date).
+		SetTime(time.Now())
+	writeAPI.WritePoint(context.Background(), p)
+	// Flush writes
+	// writeAPI.Flush()
+
+}
+
 func fileIn() []ParsedQuery {
 	file, err := os.Open("access.log.2")
 	if err != nil {
@@ -88,21 +118,21 @@ func fileIn() []ParsedQuery {
 
 	scanner := bufio.NewScanner(file)
 
-	i := 0
+	// i := 0
 	for scanner.Scan() {
-		if i > 10 {
-			break
-		}
+		// if i > 10 {
+		// 	break
+		// }
 		// fmt.Println(scanner.Text())
 		p, err := parser(scanner.Text())
 		if err != nil {
 			fmt.Print("from 87 ")
 			fmt.Println(err)
-			i++
+			// i++
 			continue
 		} else {
-			pList = append(pList, p)
-			i++
+			sendToDb(p)
+			// i++
 			continue
 		}
 	}
@@ -115,59 +145,12 @@ func fileIn() []ParsedQuery {
 
 func main() {
 
-	pList := fileIn()
-	fmt.Println(pList[0].date)
+	start := time.Now()
 
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("Some Error Occured. Err: %s", err)
-	}
+	fileIn()
 
-	token := os.Getenv("TOKEN")
-	bucket := os.Getenv("BUCKET")
-	url := os.Getenv("URL")
-	org := os.Getenv("ORG")
-
-	// Create a new client using an InfluxDB server base URL and an authentication token
-	client := influxdb2.NewClient(url, token)
-	// Use blocking write client for writes to desired bucket
-	writeAPI := client.WriteAPIBlocking(org, bucket)
-
-	// get non-blocking write client
-	// writeAPI := client.WriteAPI(org, bucket)
-
-	// write line protocol
-	for i := 0; i < len(pList); i++ {
-		p := influxdb2.NewPointWithMeasurement("stat").
-			AddTag("unit", "download").
-			AddField("distro", pList[i].distro).
-			AddField("date", pList[i].date).
-			SetTime(time.Now())
-		writeAPI.WritePoint(context.Background(), p)
-		// Flush writes
-		// writeAPI.Flush()
-	}
-
-	/*
-		// Get query client
-		queryAPI := client.QueryAPI(org)
-		// Get parser flux query result
-		result, err := queryAPI.Query(context.Background(), `from(bucket:"MirrorData")|> range(start: -1h) |> filter(fn: (r) => r._measurement == "stat")`)
-		if err == nil {
-			// Use Next() to iterate over query result lines
-			for result.Next() {
-				// Observe when there is new grouping key producing new table
-				if result.TableChanged() {
-					fmt.Printf("table: %s\n", result.TableMetadata().String())
-				}
-				// read result
-				fmt.Printf("row: %s\n", result.Record().String())
-			}
-			if result.Err() != nil {
-				fmt.Printf("Query error: %s\n", result.Err().Error())
-			}
-		}
-		// Ensures background processes finishes
-		client.Close()
-	*/
+	elasped := time.Since(start)
+	fmt.Println("")
+	fmt.Printf("Took %s", elasped)
+	fmt.Println("")
 }
