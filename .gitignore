@@ -4,3 +4,4 @@ config.yml
 ./influxdb
 ./influxdb.conf
 main
+m.exe
