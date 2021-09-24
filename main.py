@@ -17,7 +17,7 @@
 #             i+=1
 #     return pList
 
-from os import wait
+# from os import wait
 import time
 
 with open('access.log.2') as f:

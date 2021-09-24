@@ -2,82 +2,32 @@ package main
 
 import (
 	"bufio"
-	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/oschwald/geoip2-golang"
+
 	log "github.com/schollz/logger"
-	"github.com/schollz/websocket"
-	"github.com/schollz/websocket/wsjson"
 )
-
-func handleWebsocket(w http.ResponseWriter, r *http.Request) (err error) {
-	c, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		return
-	}
-	defer c.Close(websocket.StatusInternalError, "internal error")
-
-	ctx, cancel := context.WithTimeout(r.Context(), time.Hour*120000)
-	defer cancel()
-
-	for {
-		var v interface{}
-		err = wsjson.Read(ctx, c, &v)
-		if err != nil {
-			break
-		}
-		log.Debugf("received: %v", v)
-		// log.Printf("recieved: %v", v)
-		err = wsjson.Write(ctx, c, struct{ Message string }{
-			"hello, browser",
-		})
-		if err != nil {
-			break
-		}
-	}
-	if websocket.CloseStatus(err) == websocket.StatusGoingAway {
-		err = nil
-	}
-	c.Close(websocket.StatusNormalClosure, "")
-	return
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	t := time.Now().UTC()
-	err := handle(w, r)
-	if err != nil {
-		log.Error(err)
-	}
-	log.Infof("%v %v %v %s\n", r.RemoteAddr, r.Method, r.URL.Path, time.Since(t))
-}
-
-func handle(w http.ResponseWriter, r *http.Request) (err error) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-	// very special paths
-	if r.URL.Path == "/ws" {
-		return handleWebsocket(w, r)
-	} else {
-		b, _ := ioutil.ReadFile("index.html")
-		w.Write(b)
-	}
-
-	return
-}
 
 func parser(line string) string {
 	foundIp := strings.SplitN(line, "-", 2)[0]
 	return foundIp
 }
+
+type longLat struct {
+	Long float64
+	Lat  float64
+}
+
+var clients = make(map[*websocket.Conn]bool)
+var channel = make(chan longLat)
 
 func fileIn() {
 
@@ -87,6 +37,7 @@ func fileIn() {
 		fmt.Println(err)
 		return
 	}
+
 	// buf := bytes.NewBuffer(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -103,65 +54,81 @@ func fileIn() {
 		}
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		fmt.Println(long, lat)
+		// fmt.Println(long, lat)
+		channel <- longLat{long, lat}
 	}
 }
 
-// func stuff() {
-// 	// fileIn()
-// 	fmt.Println("File read and parsed")
-// 	// fmt.Println(ip)
-// 	type LongLat struct {
-// 		long float64
-// 		lat  float64
-// 	}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
-// 	// db, err := ip2location.OpenDB("./IP-LATITUDE-LONGITUDE.BIN")
-// 	listLongLat := []LongLat{}
-
-// 	if err != nil {
-// 		fmt.Print(err)
-// 		return
-// 	}
-// 	for i := 0; i < len(ip); i++ {
-// 		ipNew := net.ParseIP(strings.TrimSpace(ip[i]))
-// 		results, err := db.City(ipNew)
-// 		if err != nil {
-// 			fmt.Print(err)
-// 			return
-// 		}
-// 		q := LongLat{results.Location.Latitude, results.Location.Longitude}
-// 		listLongLat = append(listLongLat, q)
-// 		if i%100000 == 0 {
-// 			fmt.Println(i)
-// 		}
-
-// 	}
-// }
-
-//d0dfc00032243627562af6aaa7821189
 func main() {
-	// scanner := bufio.NewReader(os.Stdin)
-	// for {
 
-	// 	line, _ := scanner.ReadString('\n')
-	// 	fmt.Println(line)
-	// 	p := parser(line)
-	// 	fmt.Println(p)
-	// }
-	fileIn()
-	// start := time.Now()
-	// log.SetLevel("debug")
-	// port := 8098
-	// log.Infof("listening on :%d", port)
-	// http.HandleFunc("/", handler)
-	// http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	go fileIn()
 
-	// // fmt.Println(listLongLat)
+	router := mux.NewRouter()
+	router.HandleFunc("/", rootHandler).Methods("GET")
+	router.HandleFunc("/longlat", longLatHandler).Methods("POST")
+	router.HandleFunc("/ws", wsHandler)
+	go echo()
 
-	// fmt.Println("Done")
-	// elasped := time.Since(start)
-	// fmt.Println("")
-	// fmt.Printf("Took %s", elasped)
-	// fmt.Println("")
+	log.Fatal(http.ListenAndServe(":8844", router))
+
+	// fileIn(channel)
+
+	/*
+		Map of websockets map is dict in python
+		As websocket is created add to map
+		have data iterate over websockets sending it to each
+
+	*/
+
+}
+
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "home")
+}
+
+func writer(coord longLat) {
+	channel <- coord
+}
+
+func longLatHandler(w http.ResponseWriter, r *http.Request) {
+	var coordinates longLat
+	if err := json.NewDecoder(r.Body).Decode(&coordinates); err != nil {
+		log.Printf("ERROR: %s", err)
+		http.Error(w, "Bad request", http.StatusTeapot)
+		return
+	}
+	defer r.Body.Close()
+	go writer(coordinates)
+}
+
+func wsHandler(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// register client
+	clients[ws] = true
+}
+
+func echo() {
+	for {
+		val := <-channel
+		latlong := fmt.Sprintf("%f %f %s", val.Lat, val.Long)
+		// send to every client that is currently connected
+		for client := range clients {
+			err := client.WriteMessage(websocket.TextMessage, []byte(latlong))
+			if err != nil {
+				log.Printf("Websocket error: %s", err)
+				client.Close()
+				delete(clients, client)
+			}
+		}
+	}
 }
