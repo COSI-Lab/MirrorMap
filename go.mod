@@ -3,8 +3,8 @@ module example.com/m/v2
 go 1.13
 
 require (
-	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/influxdata/influxdb-client-go/v2 v2.5.0
 	github.com/ip2location/ip2location-go v8.3.0+incompatible // indirect
 	github.com/joho/godotenv v1.3.0

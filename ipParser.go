@@ -2,18 +2,16 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
+	"log"
 	"net"
-	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/oschwald/geoip2-golang"
-
-	log "github.com/schollz/logger"
 )
 
 func parser(line string) string {
@@ -26,10 +24,7 @@ type longLat struct {
 	Lat  float64
 }
 
-var clients = make(map[*websocket.Conn]bool)
-var channel = make(chan longLat)
-
-func fileIn() {
+func fileIn(ch chan []byte) {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	db, err := geoip2.Open("GeoLite2-City.mmdb")
@@ -42,7 +37,7 @@ func fileIn() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		ip := parser(line)
-		fmt.Println(ip)
+		// fmt.Println(ip)
 		if ip == "" {
 			continue
 		}
@@ -55,80 +50,86 @@ func fileIn() {
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
 		// fmt.Println(long, lat)
-		channel <- longLat{long, lat}
+		ch <- []byte(fmt.Sprintf("%f:%f", long, lat))
 	}
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+var done chan interface{}
+var interrupt chan os.Signal
+
+func receiveHandler(connection *websocket.Conn) {
+	defer close(done)
+	for {
+		_, msg, err := connection.ReadMessage()
+		if err != nil {
+			log.Println("Error in receive:", err)
+			return
+		}
+		log.Printf("Received: %s\n", msg)
+	}
 }
 
 func main() {
 
-	go fileIn()
+	ch := make(chan []byte)
 
-	router := mux.NewRouter()
-	router.HandleFunc("/", rootHandler).Methods("GET")
-	router.HandleFunc("/longlat", longLatHandler).Methods("POST")
-	router.HandleFunc("/ws", wsHandler)
-	go echo()
+	// fileIn(ch)
 
-	log.Fatal(http.ListenAndServe(":8844", router))
+	// ch := make(chan []byte)
+	// wg.Add(1)
+	go func() {
+		// defer wg.Done()
+		fileIn(ch)
 
-	// fileIn(channel)
+	}()
+	done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
+	interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
 
-	/*
-		Map of websockets map is dict in python
-		As websocket is created add to map
-		have data iterate over websockets sending it to each
+	signal.Notify(interrupt, os.Interrupt) // Notify the interrupt channel for SIGINT
 
-	*/
-
-}
-
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "home")
-}
-
-func writer(coord longLat) {
-	channel <- coord
-}
-
-func longLatHandler(w http.ResponseWriter, r *http.Request) {
-	var coordinates longLat
-	if err := json.NewDecoder(r.Body).Decode(&coordinates); err != nil {
-		log.Printf("ERROR: %s", err)
-		http.Error(w, "Bad request", http.StatusTeapot)
-		return
-	}
-	defer r.Body.Close()
-	go writer(coordinates)
-}
-
-func wsHandler(w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
+	socketUrl := "ws://localhost:8080" + "/socket"
+	conn, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error connecting to Websocket Server:", err)
 	}
+	defer conn.Close()
+	go receiveHandler(conn)
 
-	// register client
-	clients[ws] = true
-}
-
-func echo() {
+	// Our main loop for the client
+	// We send our relevant packets here
 	for {
-		val := <-channel
-		latlong := fmt.Sprintf("%f %f %s", val.Lat, val.Long)
-		// send to every client that is currently connected
-		for client := range clients {
-			err := client.WriteMessage(websocket.TextMessage, []byte(latlong))
+		val := <-ch
+		select {
+		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
+			// Send an echo packet every second
+			// x := <-ch
+			// y := IntToByteArray(x)
+			// err := conn.WriteMessage(websocket.TextMessage, []byte("Hello from GolangDocs!"))
+			err := conn.WriteMessage(websocket.TextMessage, val)
 			if err != nil {
-				log.Printf("Websocket error: %s", err)
-				client.Close()
-				delete(clients, client)
+				log.Println("Error during writing to websocket:", err)
+				return
 			}
+
+		case <-interrupt:
+			// We received a SIGINT (Ctrl + C). Terminate gracefully...
+			log.Println("Received SIGINT interrupt signal. Closing all pending connections")
+
+			// Close our websocket connection
+			err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Println("Error during closing websocket:", err)
+				return
+			}
+
+			select {
+			case <-done:
+				log.Println("Receiver Channel Closed! Exiting....")
+			case <-time.After(time.Duration(1) * time.Second):
+				log.Println("Timeout in closing receiving channel. Exiting....")
+			}
+			return
 		}
 	}
+
 }
