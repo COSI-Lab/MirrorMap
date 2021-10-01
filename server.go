@@ -33,7 +33,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		m := fmt.Sprintf("%s", message)
 		nums := strings.Split(m, ":")
 		num1, num2 := nums[0], nums[1]
-		log.Printf("num1: %s : num2: %s", num1, num2)
+		log.Printf("Long: %s : Lat: %s", num1, num2)
 		// xType := fmt.Sprintf("%T", message)
 		// fmt.Println(xType) // "[]uint8"
 		// message = []byte(strconv.Itoa())

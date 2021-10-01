@@ -27,7 +27,7 @@ type longLat struct {
 func fileIn(ch chan []byte) {
 
 	scanner := bufio.NewScanner(os.Stdin)
-	db, err := geoip2.Open("GeoLite2-City.mmdb")
+	db, err := geoip2.Open("logs/GeoLite2-City.mmdb")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -100,7 +100,7 @@ func main() {
 	for {
 		val := <-ch
 		select {
-		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
+		case <-time.After(time.Duration(1) * time.Millisecond * 500):
 			// Send an echo packet every second
 			// x := <-ch
 			// y := IntToByteArray(x)
