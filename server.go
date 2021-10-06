@@ -59,7 +59,7 @@ func fileIn(clients map[string]chan []byte) {
 		}
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		fmt.Println(long, lat)
+		// fmt.Println(long, lat)
 
 		clients_lock.RLock()
 		for _, ch := range clients {
@@ -105,6 +105,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	clients_lock.Lock()
 	clients[id] = make(chan []byte)
 	clients_lock.Unlock()
+	fmt.Printf("id created: %s", id)
 
 	// Send id to client
 	w.WriteHeader(200)

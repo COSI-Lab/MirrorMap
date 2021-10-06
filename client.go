@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -30,13 +32,15 @@ func receiveHandler(connection *websocket.Conn) {
 	}
 }
 
-func socketDoer() {
+func socketDoer(id string) {
+	fmt.Printf("id recieved %s\n", id)
 	done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
 	interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
 
 	signal.Notify(interrupt, os.Interrupt) // Notify the interrupt channel for SIGINT
 
-	socketUrl := "ws://128.153.165.236:8080" + "/socket"
+	socketUrl := "ws://0.0.0.0:8000" + "/socket/" + id
+	fmt.Println(socketUrl)
 	conn, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
 	if err != nil {
 		log.Fatal("Error connecting to Websocket Server:", err)
@@ -73,6 +77,20 @@ func socketDoer() {
 
 func main() {
 
+	resp, err := http.Get("http://0.0.0.0:8000/register")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	id := string(body)
+	fmt.Println(id)
 	// ch := make(chan []byte)
 
 	// // fileIn(ch)
@@ -84,5 +102,5 @@ func main() {
 	// 	fileIn(ch)
 
 	// }()
-	socketDoer()
+	socketDoer(id)
 }
