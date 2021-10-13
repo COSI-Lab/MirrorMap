@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -27,14 +28,9 @@ var upgrader = websocket.Upgrader{} // use default options
 var interrupt2 chan os.Signal
 var done2 chan interface{}
 
-func parser(line string) string {
+func getIp(line string) string {
 	foundIp := strings.SplitN(line, "-", 2)[0]
 	return foundIp
-}
-
-type longLat struct {
-	Long float64
-	Lat  float64
 }
 
 func fileIn(clients map[string]chan []byte) {
@@ -47,7 +43,7 @@ func fileIn(clients map[string]chan []byte) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
-		ip := parser(line)
+		ip := getIp(line)
 		if ip == "" {
 			continue
 		}
@@ -90,11 +86,14 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		val := <-ch
-		err = conn.WriteMessage(1, val)
-		if err != nil {
-			delete(clients, id)
-			return
+		select {
+		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
+			val := <-ch
+			err = conn.WriteMessage(1, val)
+			if err != nil {
+				delete(clients, id)
+				return
+			}
 		}
 	}
 }
@@ -105,7 +104,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	clients_lock.Lock()
 	clients[id] = make(chan []byte)
 	clients_lock.Unlock()
-	fmt.Printf("id created: %s", id)
+	fmt.Printf("id created: %s\n", id)
 
 	// Send id to client
 	w.WriteHeader(200)
@@ -120,6 +119,10 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Index Page")
+}
+
+type HTMLStrippingFileSystem struct {
+	http.FileSystem
 }
 
 func main() {
@@ -143,8 +146,9 @@ func main() {
 	r.HandleFunc("/health", healthHandler)
 	r.HandleFunc("/register", registerHandler)
 	r.HandleFunc("/socket/{id}", socketHandler)
-	r.HandleFunc("/", home)
+	// r.HandleFunc("/", home)
 
+	r.PathPrefix("/").Handler(http.FileServer(HTMLStrippingFileSystem{http.Dir("static")})).Methods("GET")
 	// Serve on 8080
 	s := &http.Server{
 		Addr:    ":8000",
