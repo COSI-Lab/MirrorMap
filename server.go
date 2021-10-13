@@ -57,11 +57,11 @@ func fileIn(clients map[string]chan []byte) {
 		lat := results.Location.Latitude
 		// fmt.Println(long, lat)
 
-		clients_lock.RLock()
+		clients_lock.Lock()
 		for _, ch := range clients {
 			ch <- []byte(fmt.Sprintf("%f:%f", long, lat))
 		}
-		clients_lock.RUnlock()
+		clients_lock.Unlock()
 	}
 }
 
@@ -87,7 +87,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		select {
-		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
+		case <-time.After(time.Duration(1) * time.Millisecond * 500):
 			val := <-ch
 			err = conn.WriteMessage(1, val)
 			if err != nil {

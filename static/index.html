@@ -2,6 +2,8 @@
 
 <html>
    <head>
+
+      <link rel="stylesheet" href="style.css">
       
       <script type = "text/javascript">
          function WebSocketTest() {
@@ -19,26 +21,32 @@
             //  var id = 
             
             if ("WebSocket" in window) {
-               alert("WebSocket is supported by your Browser!");
+               // alert("WebSocket is supported by your Browser!");
                
                // Let us open a web socket
                var url = "ws://localhost:8000/socket/" + id
                var ws = new WebSocket(url);
 				
                ws.onmessage = function (evt) { 
-                  var received_msg = evt.data;
-                  console.log(received_msg)
+                  var msg = evt.data;
+                  let [lat, long] = msg.split(":")
+                  lat = parseFloat(lat);
+                  long = parseFloat(long);
+                  let x = (lat + 180) / 360;
+                  let y = (90 - long) / 180;
+                  console.log(x, y)
+                  circles.push([x, y]);
                };
 				
                ws.onclose = function() { 
                   
                   // websocket is closed.
-                  alert("Connection is closed..."); 
+                  alert("Connection is closed\nrefresh to connect"); 
                };
             } else {
               
                // The browser doesn't support WebSocket
-               alert("WebSocket NOT supported by your Browser!");
+               alert("This site will not work since\nyour browser does not support websockets");
             }
          }
          }
@@ -47,8 +55,38 @@
    </head>
    
    <body>
-      <div id = "sse">
-         <a href = "javascript:WebSocketTest()">Run WebSocket</a>
+      <img id="map" src="map.jpg" alt="" style="display:none;">
+      <div>
+         <!-- <a href = "javascript:WebSocketTest()">Run WebSocket</a> -->
+         <canvas id="myCanvas"></canvas>
+         <script>         
+         var circles = [];
+         window.onload = async function() {
+            WebSocketTest(circles);
+
+            let canvas = document.getElementById("myCanvas");
+            let ctx = canvas.getContext("2d");
+            let img = document.getElementById("map");
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            ctx.drawImage(img, 0,0, window.innerWidth, window.innerHeight);
+
+            while (true) {
+               for (circle of circles) {
+                  ctx.fillStyle = "#c82124";
+                  ctx.beginPath();
+                  ctx.arc(circle[0] * window.innerWidth, circle[1] * window.innerHeight, 3, 0, 2 * Math.PI, false);
+                  ctx.closePath();
+                  ctx.fill();
+               }
+
+               await new Promise(r => setTimeout(r, 1000));
+            }
+         }
+         </script>
+
       </div>
       
    </body>
