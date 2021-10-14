@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -39,6 +40,11 @@ func fileIn(clients map[string]chan []byte) {
 		fmt.Println(err)
 		return
 	}
+	distList := []string{"alpine", "archlinux", "archlinux32", "artix-linux", "blender", "centos", "clonezilla", "cpan", "cran", "ctan", "cygwin", "debian", "debian-cd", "debian-security", "eclipse", "fedora", "fedora-epel", "freebsd", "gentoo", "gentoo-portage", "gnu", "gparted", "ipfire", "isabelle", "linux", "linuxmint", "manjaro", "msys2", "odroid", "openbsd", "opensuse", "parrot", "raspbian", "RebornOS", "ros", "sabayon", "serenity", "slackware", "slitaz", "tdf", "templeos", "ubuntu", "ubuntu-cdimage", "ubuntu-ports", "ubuntu-releases", "videolan", "voidlinux", "zorinos"}
+	distMap := make(map[string]int)
+	for i, dist := range distList {
+		distMap[dist] = i
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -53,13 +59,20 @@ func fileIn(clients map[string]chan []byte) {
 			fmt.Println(err)
 			return
 		}
+		reGet := regexp.MustCompile(`\/(.*?)\/`)
+		listDistro := reGet.FindAllString(line, -1)
+		nfoundDistro := ""
+		foundDistro := strings.SplitN(listDistro[1], " ", -1)
+		nfoundDistro = strings.Join(foundDistro, "")
+		nfoundDistro = strings.Replace(nfoundDistro, "/", "", -1)
+
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
 		// fmt.Println(long, lat)
 
 		clients_lock.Lock()
 		for _, ch := range clients {
-			ch <- []byte(fmt.Sprintf("%f:%f", long, lat))
+			ch <- []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro]))
 		}
 		clients_lock.Unlock()
 	}
