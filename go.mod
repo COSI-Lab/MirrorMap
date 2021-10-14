@@ -12,4 +12,5 @@ require (
 	github.com/sacOO7/gowebsocket v0.0.0-20210515122958-9396f1a71e23 // indirect
 	github.com/schollz/logger v1.2.0
 	github.com/schollz/websocket v1.8.0
+	github.com/thanhpk/randstr v1.0.4
 )
