@@ -1,111 +1,213 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 
 <html>
-   <head>
+  <head>
+    <link rel="stylesheet" href="style.css" />
 
-      <link rel="stylesheet" href="style.css">
-      
-      <script type = "text/javascript">
-         function WebSocketTest() {
+    <script type="text/javascript">
+      function WebSocketTest() {
+        let xhr = new XMLHttpRequest();
+        xhr.open("GET", "/register");
+        xhr.setRequestHeader("Access-Control-Allow-Headers", "*");
+        xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
+        xhr.send();
+        xhr.onload = function () {
+          console.log("id:", xhr.response);
+          var id = xhr.response;
 
-            let xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:8000/register');
-            xhr.setRequestHeader('Access-Control-Allow-Headers', '*');
-            xhr.setRequestHeader('Access-Control-Allow-Origin', '*');
-            xhr.send();
-            xhr.onload = function() {
-                console.log(xhr.response);
-                var id = xhr.response
-            
-             
-            //  var id = 
-            let distlist = ["alpine", "archlinux", "archlinux32", "artix-linux", "blender",
-             "centos", "clonezilla", "cpan", "cran", "ctan", "cygwin", "debian", "debian-cd",
-              "debian-security", "eclipse","fedora", "fedora-epel", "freebsd", "gentoo", "gentoo-portage", 
-              "gnu", "gparted", "ipfire", "isabelle", "linux", "linuxmint", "manjaro", "msys2", "odroid",
-               "openbsd", "opensuse", "parrot", "raspbian", "RebornOS", "ros", "sabayon", "serenity", 
-               "slackware", "slitaz", "tdf", "templeos", "ubuntu", "ubuntu-cdimage", "ubuntu-ports",
-                "ubuntu-releases", "videolan", "voidlinux", "zorinos"]
+          let distlist = [
+            "alpine",
+            "archlinux",
+            "archlinux32",
+            "artix-linux",
+            "blender",
+            "centos",
+            "clonezilla",
+            "cpan",
+            "cran",
+            "ctan",
+            "cygwin",
+            "debian",
+            "debian-cd",
+            "debian-security",
+            "eclipse",
+            "fedora",
+            "fedora-epel",
+            "freebsd",
+            "gentoo",
+            "gentoo-portage",
+            "gnu",
+            "gparted",
+            "ipfire",
+            "isabelle",
+            "linux",
+            "linuxmint",
+            "manjaro",
+            "msys2",
+            "odroid",
+            "openbsd",
+            "opensuse",
+            "parrot",
+            "raspbian",
+            "RebornOS",
+            "ros",
+            "sabayon",
+            "serenity",
+            "slackware",
+            "slitaz",
+            "tdf",
+            "templeos",
+            "ubuntu",
+            "ubuntu-cdimage",
+            "ubuntu-ports",
+            "ubuntu-releases",
+            "videolan",
+            "voidlinux",
+            "zorinos",
+          ];
 
-            if ("WebSocket" in window) {
-               // alert("WebSocket is supported by your Browser!");
-               
-               // Let us open a web socket
-               var url = "ws://localhost:8000/socket/" + id
-               var ws = new WebSocket(url);
-				
-               ws.onmessage = function (evt) { 
-                  var msg = evt.data;
-                  let [lat, long, distro] = msg.split(":")
-                  lat = parseFloat(lat);
-                  long = parseFloat(long);
-                  distro = parseInt(distro)
-                  let x = (lat + 180) / 360;
-                  let y = (90 - long) / 180;
-                  // console.log(x, y)
-                  // console.log(distlist[distro])
-                  circles.push([x, y, distro]);
-               };
-				
-               ws.onclose = function() { 
-                  
-                  // websocket is closed.
-                  alert("Connection is closed\nrefresh to connect"); 
-               };
-            } else {
-              
-               // The browser doesn't support WebSocket
-               alert("This site will not work since\nyour browser does not support websockets");
-            }
-         }
-         }
-      </script>
-		
-   </head>
-   
-   <body>
-      <img id="map" src="map.jpg" alt="" style="display:none;">
-      <div>
-         <!-- <a href = "javascript:WebSocketTest()">Run WebSocket</a> -->
-         <canvas id="myCanvas"></canvas>
-         <script>         
-         var circles = [];
-         window.onload = async function() {
-            WebSocketTest(circles);
+          if ("WebSocket" in window) {
+            // Let us open a web socket
+            var url = "ws://" + location.host + "/socket/" + id;
+            var ws = new WebSocket(url);
 
-            let colorlist = ['#cd5700', '#e2725b', '#d8bfd8', '#de6fa1', '#fc89ac',
-            '#0abab5', '#e08d3c', '#dbd7d2', '#eee600', '#ff6347', '#746cc0', '#ffc87c',
-            '#fd0e35', '#808080', '#00755e', '#0073cf', '#417dc1', '#deaa88', '#b57281',
-            '#30d5c8', '#00ffef', '#a0d6b4', '#7c4848', '#8a496b', '#66023c', '#03a',
-            '#d9004c', '#8878c3', '#536895', '#ffb300', '#3cd070', '#ff6fff', '#120a8f',
-            '#4166f5', '#635147', '#ffddca', '#5b92e5', '#b78727', '#ff6', '#014421',
-            '#efcc00', '#ffd300', '#ffae42', '#ffef00', '#fefe33', '#0014a8', '#2c1608']
+            ws.onmessage = function (evt) {
+              var msg = evt.data;
+              let [lat, long, distro] = msg.split(":");
+              lat = parseFloat(lat);
+              long = parseFloat(long);
+              distro = parseInt(distro);
+              let x = (lat + 180) / 360;
+              let y = (90 - long) / 180;
 
-            let canvas = document.getElementById("myCanvas");
-            let ctx = canvas.getContext("2d");
-            let img = document.getElementById("map");
-            
+              // Add new data points to the front of the list
+              circles.unshift([x, y, distro, new Date()]);
+            };
+
+            ws.onclose = function () {
+              // websocket is closed.
+              alert("Connection is closed\nrefresh to connect");
+            };
+          } else {
+            // The browser doesn't support WebSocket
+            alert(
+              "This site will not work since\nyour browser does not support websockets"
+            );
+          }
+        };
+      }
+    </script>
+  </head>
+
+  <body>
+    <img id="map" src="map.jpg" alt="" style="display: none" />
+    <div>
+      <!-- <a href = "javascript:WebSocketTest()">Run WebSocket</a> -->
+      <canvas id="myCanvas"></canvas>
+      <script>
+        var circles = [];
+        window.onload = async function () {
+          WebSocketTest(circles);
+
+          const colorlist = [
+            "#cd5700",
+            "#e2725b",
+            "#d8bfd8",
+            "#de6fa1",
+            "#fc89ac",
+            "#0abab5",
+            "#e08d3c",
+            "#dbd7d2",
+            "#eee600",
+            "#ff6347",
+            "#746cc0",
+            "#ffc87c",
+            "#fd0e35",
+            "#808080",
+            "#00755e",
+            "#0073cf",
+            "#417dc1",
+            "#deaa88",
+            "#b57281",
+            "#30d5c8",
+            "#00ffef",
+            "#a0d6b4",
+            "#7c4848",
+            "#8a496b",
+            "#66023c",
+            "#03a",
+            "#d9004c",
+            "#8878c3",
+            "#536895",
+            "#ffb300",
+            "#3cd070",
+            "#ff6fff",
+            "#120a8f",
+            "#4166f5",
+            "#635147",
+            "#ffddca",
+            "#5b92e5",
+            "#b78727",
+            "#ff6",
+            "#014421",
+            "#efcc00",
+            "#ffd300",
+            "#ffae42",
+            "#ffef00",
+            "#fefe33",
+            "#0014a8",
+            "#2c1608",
+          ];
+
+          // How long points are displayed (in milliseconds)
+          const DISPLAY_TIME = 1000 * 30;
+
+          const canvas = document.getElementById("myCanvas");
+          const ctx = canvas.getContext("2d");
+          const img = document.getElementById("map");
+
+          window.onresize = function () {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+          };
 
-            ctx.drawImage(img, 0,0, window.innerWidth, window.innerHeight);
+          window.onresize();
 
-            while (true) {
-               for (circle of circles) {
-                  ctx.fillStyle = colorlist[circle[2]];
-                  ctx.globalAlpha = 0.2
-                  ctx.beginPath();
-                  ctx.arc(circle[0] * window.innerWidth, circle[1] * window.innerHeight, 3, 0, 2 * Math.PI, false);
-                  ctx.closePath();
-                  ctx.fill();
-               }
+          while (true) {
+            ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
+            let checkTime = new Date(Date.now() - DISPLAY_TIME);
 
-               await new Promise(r => setTimeout(r, 500));
+            console.log(circles.length);
+            for (let i = 0; i < circles.length; i++) {
+              circle = circles[i];
+
+              // Remove old data points
+              if (checkTime > circles[i][3]) {
+                console.log("DELETE ", circles.length - i);
+                // We know all future indexes are older
+                circles = circles.slice(0, i);
+                break;
+              }
+
+              ctx.fillStyle = colorlist[circle[2]];
+              ctx.beginPath();
+              ctx.arc(
+                circle[0] * window.innerWidth,
+                circle[1] * window.innerHeight,
+                2.0,
+                0,
+                2 * Math.PI,
+                false
+              );
+              ctx.closePath();
+              ctx.fill();
             }
-         }
-         </script>
 
-      </div>
-      
-   </body>
+            // Run around 60 fps
+            await new Promise((r) => setTimeout(r, 17));
+          }
+        };
+      </script>
+    </div>
+  </body>
 </html>
