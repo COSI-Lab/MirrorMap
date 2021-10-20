@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -62,6 +61,9 @@ func fileIn(clients map[string]chan []byte) {
 		reGet := regexp.MustCompile(`\/(.*?)\/`)
 		listDistro := reGet.FindAllString(line, -1)
 		nfoundDistro := ""
+		if len(listDistro) < 2 {
+			continue
+		}
 		foundDistro := strings.SplitN(listDistro[1], " ", -1)
 		nfoundDistro = strings.Join(foundDistro, "")
 		nfoundDistro = strings.Replace(nfoundDistro, "/", "", -1)
@@ -99,14 +101,11 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		select {
-		case <-time.After(time.Duration(1) * time.Millisecond * 500):
-			val := <-ch
-			err = conn.WriteMessage(1, val)
-			if err != nil {
-				delete(clients, id)
-				return
-			}
+		val := <-ch
+		err = conn.WriteMessage(1, val)
+		if err != nil {
+			delete(clients, id)
+			return
 		}
 	}
 }
