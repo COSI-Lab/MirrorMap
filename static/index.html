@@ -81,7 +81,7 @@
               let y = (90 - long) / 180;
 
               // Add new data points to the front of the list
-              circles.unshift([x, y, distro, new Date()]);
+              circles.unshift([x, y, distro, new Date().getTime()]);
             };
 
             ws.onclose = function () {
@@ -160,7 +160,7 @@
           ];
 
           // How long points are displayed (in milliseconds)
-          const DISPLAY_TIME = 1000 * 30;
+          const DISPLAY_TIME = 1000 * 20;
 
           const canvas = document.getElementById("myCanvas");
           const ctx = canvas.getContext("2d");
@@ -174,16 +174,18 @@
           window.onresize();
 
           while (true) {
+            ctx.globalAlpha = 1;
             ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
-            let checkTime = new Date(Date.now() - DISPLAY_TIME);
+            let checkTime = new Date().getTime();
 
-            console.log(circles.length);
             for (let i = 0; i < circles.length; i++) {
               circle = circles[i];
 
+              // Time difference
+              const delta = checkTime - circles[i][3];
+
               // Remove old data points
-              if (checkTime > circles[i][3]) {
-                console.log("DELETE ", circles.length - i);
+              if (delta > DISPLAY_TIME) {
                 // We know all future indexes are older
                 circles = circles.slice(0, i);
                 break;
@@ -191,6 +193,7 @@
 
               ctx.fillStyle = colorlist[circle[2]];
               ctx.beginPath();
+              ctx.globalAlpha = 1 - (delta / DISPLAY_TIME);
               ctx.arc(
                 circle[0] * window.innerWidth,
                 circle[1] * window.innerHeight,
