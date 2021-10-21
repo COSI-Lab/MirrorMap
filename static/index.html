@@ -15,7 +15,50 @@
           console.log("id:", xhr.response);
           var id = xhr.response;
 
-          let distlist = [
+          if ("WebSocket" in window) {
+            // Let us open a web socket
+            var url = "ws://" + location.host + "/socket/" + id;
+            var ws = new WebSocket(url);
+
+            ws.onmessage = function (evt) {
+              var msg = evt.data;
+              let [lat, long, distro] = msg.split(":");
+              lat = parseFloat(lat);
+              long = parseFloat(long);
+              distro = parseInt(distro);
+              let x = (lat + 180) / 360;
+              let y = (90 - long) / 180;
+              distCounter[distro] += 1;
+              // Add new data points to the front of the list
+              circles.unshift([x, y, distro, new Date().getTime()]);
+            };
+
+            ws.onclose = function () {
+              // websocket is closed.
+              alert("Connection is closed\nrefresh to connect");
+            };
+          } else {
+            // The browser doesn't support WebSocket
+            alert(
+              "This site will not work since\nyour browser does not support websockets"
+            );
+          }
+        };
+      }
+    </script>
+  </head>
+
+  <body>
+    <img id="map" src="map.jpg" alt="" style="display: none" />
+    <div>
+      <!-- <a href = "javascript:WebSocketTest()">Run WebSocket</a> -->
+      <canvas id="myCanvas"></canvas>
+      <script>
+        //Globals for keeping track of circl x, y and dist
+        //global for list of dists
+        //global for number of times dist shows up
+        var circles = [];
+        var distlist = [
             "alpine",
             "archlinux",
             "archlinux32",
@@ -65,49 +108,12 @@
             "voidlinux",
             "zorinos",
           ];
-
-          if ("WebSocket" in window) {
-            // Let us open a web socket
-            var url = "ws://" + location.host + "/socket/" + id;
-            var ws = new WebSocket(url);
-
-            ws.onmessage = function (evt) {
-              var msg = evt.data;
-              let [lat, long, distro] = msg.split(":");
-              lat = parseFloat(lat);
-              long = parseFloat(long);
-              distro = parseInt(distro);
-              let x = (lat + 180) / 360;
-              let y = (90 - long) / 180;
-
-              // Add new data points to the front of the list
-              circles.unshift([x, y, distro, new Date().getTime()]);
-            };
-
-            ws.onclose = function () {
-              // websocket is closed.
-              alert("Connection is closed\nrefresh to connect");
-            };
-          } else {
-            // The browser doesn't support WebSocket
-            alert(
-              "This site will not work since\nyour browser does not support websockets"
-            );
-          }
-        };
-      }
-    </script>
-  </head>
-
-  <body>
-    <img id="map" src="map.jpg" alt="" style="display: none" />
-    <div>
-      <!-- <a href = "javascript:WebSocketTest()">Run WebSocket</a> -->
-      <canvas id="myCanvas"></canvas>
-      <script>
-        var circles = [];
+        var distCounter = [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         window.onload = async function () {
-          WebSocketTest(circles);
+          WebSocketTest(circles, distCounter, distlist);
 
           const colorlist = [
             "#cd5700",
@@ -176,14 +182,29 @@
           while (true) {
             ctx.globalAlpha = 1;
             ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
+            ctx.font = "20px Arial";
             let checkTime = new Date().getTime();
 
             for (let i = 0; i < circles.length; i++) {
               circle = circles[i];
 
+              let incX = 0;
+              let incY = 0;
+              for (let i = 0; i < distCounter.length; i++){
+                if (distCounter[i] != 0) {
+                  if (incY == 320) {
+                    incY = 50;
+                    incX = 0;
+                  }
+                  ctx.fillStyle = colorlist[i]
+                  ctx.fillText(distlist[i], 100 + incX, 600 + incY)
+                  incY += 20;
+                }
+              }
               // Time difference
               const delta = checkTime - circles[i][3];
 
+              // console.log(distCounter)
               // Remove old data points
               if (delta > DISPLAY_TIME) {
                 // We know all future indexes are older
@@ -207,7 +228,7 @@
             }
 
             // Run around 60 fps
-            await new Promise((r) => setTimeout(r, 17));
+            await new Promise((r) => setTimeout(r, 1));
           }
         };
       </script>
