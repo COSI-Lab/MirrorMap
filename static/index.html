@@ -112,6 +112,11 @@
           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        var distCircles = [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        
         window.onload = async function () {
           WebSocketTest(circles, distCounter, distlist);
 
@@ -179,28 +184,17 @@
 
           window.onresize();
 
+          // ctx.globalAlpha = 1;
+          // ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
+          ctx.font = "15px Arial";
+          let checkTime = new Date().getTime();
+
           while (true) {
             ctx.globalAlpha = 1;
             ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
-            ctx.font = "20px Arial";
-            let checkTime = new Date().getTime();
-
             for (let i = 0; i < circles.length; i++) {
               circle = circles[i];
-
-              let incX = 0;
-              let incY = 0;
-              for (let i = 0; i < distCounter.length; i++){
-                if (distCounter[i] != 0) {
-                  if (incY == 320) {
-                    incY = 50;
-                    incX = 0;
-                  }
-                  ctx.fillStyle = colorlist[i]
-                  ctx.fillText(distlist[i], 100 + incX, 600 + incY)
-                  incY += 20;
-                }
-              }
+              distCircles[circle[2]] = 1;
               // Time difference
               const delta = checkTime - circles[i][3];
 
@@ -226,9 +220,45 @@
               ctx.closePath();
               ctx.fill();
             }
-
+            
+            ctx.beginPath();
+            let incX = 0;
+            let incY = 0;
+            let startX = 10;
+            let startY = window.innerHeight * 0.44;
+            //let sum = arr.reduce(function (acc, element) {
+            //   return acc + element;
+            // }, 0);
+            let maxPerColumn = window.innerHeight * (0.90 - 0.44) / 15 
+            let numberOfEntries = distCircles.reduce((a, b) => a + b);
+            if (numberOfEntries == 0){
+              await new Promise((r) => setTimeout(r, 15))
+              continue
+            }
+            let numberOfRows = Math.ceil(numberOfEntries / maxPerColumn);
+            let height = Math.min(window.innerHeight * (0.90 - 0.44), 15 * numberOfEntries)
+            let width = (numberOfRows) * 130
+            ctx.fillStyle = "#282828"
+            ctx.rect(5, startY - 40, width, height + 40);
+            ctx.fill();
+            ctx.fillStyle = "white"
+            ctx.textAlign = "center"
+            ctx.fillText("Legend", width * .5, startY - 20)
+            ctx.textAlign = "left"
+            for (let i = 0; i < distCircles.length; i++) {
+              if (distCircles[i] == 1) {
+                if (startY + incY > window.innerHeight * 0.90) {
+                  incY = 0;
+                  incX += 130;
+                }
+                ctx.fillStyle = colorlist[i];
+                ctx.fillText(distlist[i], startX + incX, startY + incY);
+                incY += 15;
+                distCircles[i] = 0;
+              }
+            }
             // Run around 60 fps
-            await new Promise((r) => setTimeout(r, 1));
+            await new Promise((r) => setTimeout(r, 15));
           }
         };
       </script>
