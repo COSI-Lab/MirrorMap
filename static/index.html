@@ -108,7 +108,7 @@
           WebSocketTest();
 
           // How long points are displayed (in milliseconds)
-          const DISPLAY_TIME = 1000 * 1;
+          const DISPLAY_TIME = 1000 * 30;
 
           const canvas = document.getElementById("myCanvas");
           const ctx = canvas.getContext("2d");
@@ -117,23 +117,15 @@
           window.onresize = function () {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-
-            ctx.globalAlpha = 1;
-            ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
           };
 
           window.onresize();
-          let checkTime = new Date().getTime();
-
-          let frame = 0;
 
           while (true) {
-            if (frame % 600 == 0) {
-              ctx.globalAlpha = 1;
-              ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
-              frame = 0;
-            }
-            frame += 1;
+            let checkTime = new Date().getTime();
+
+            ctx.globalAlpha = 1;
+            ctx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
 
             for (let i = 0; i < circles.length; i++) {
               circle = circles[i];
@@ -188,6 +180,7 @@
               15 * numberOfEntries
             );
             let width = numberOfRows * 130;
+            ctx.globalAlpha = 1;
             ctx.fillStyle = "#282828";
             ctx.rect(5, startY - 40, width, height + 45);
             ctx.fill();
@@ -208,11 +201,7 @@
                   incX += 130;
                 }
                 ctx.fillStyle = sorted[i][1];
-                ctx.fillText(
-                  sorted[i][0] + " " + sorted[i][2],
-                  startX + incX,
-                  startY + incY
-                );
+                ctx.fillText(sorted[i][0], startX + incX, startY + incY);
                 incY += 15;
                 sorted[i][3] = 0;
               }
