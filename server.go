@@ -92,19 +92,28 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	// get the channel
 	ch := clients[id]
 
+	log.Printf("%s connected!\n", id)
+
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("Error during connection upgradation:", err)
 		return
 	}
-	defer conn.Close()
+
+	defer func() {
+		conn.Close()
+		log.Printf("%s disconnected!", id)
+	}()
 
 	for {
 		val := <-ch
 		err = conn.WriteMessage(1, val)
 		if err != nil {
+			clients_lock.Lock()
+			log.Printf("Error sending message %s : %s", id, err)
 			delete(clients, id)
+			clients_lock.Unlock()
 			return
 		}
 	}
@@ -116,7 +125,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	clients_lock.Lock()
 	clients[id] = make(chan []byte)
 	clients_lock.Unlock()
-	fmt.Printf("id created: %s\n", id)
+	log.Printf("new connection registered: %s\n", id)
 
 	// Send id to client
 	w.WriteHeader(200)
@@ -127,10 +136,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Send id to client
 	w.WriteHeader(200)
 	w.Write([]byte(fmt.Sprint(len(clients))))
-}
-
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Index Page")
 }
 
 type HTMLStrippingFileSystem struct {
@@ -161,10 +166,12 @@ func main() {
 	// r.HandleFunc("/", home)
 
 	r.PathPrefix("/").Handler(http.FileServer(HTMLStrippingFileSystem{http.Dir("static")})).Methods("GET")
+
 	// Serve on 8080
 	s := &http.Server{
 		Addr:    ":8000",
 		Handler: r,
 	}
+	log.Printf("Serving on localhost:%d", 8000)
 	log.Fatalf("%s", s.ListenAndServe())
 }
