@@ -100,7 +100,7 @@ window.onload = async function () {
 
   window.onresize = function () {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.9;
+    canvas.height = window.innerHeight;
   };
 
   window.onresize();

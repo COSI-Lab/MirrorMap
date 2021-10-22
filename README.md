@@ -1,4 +1,9 @@
-# Ip Parser
+# MirrorMap
 
-This project has been reworked to instead parse just ip's from nginx logs and
-relfect them on a heatmap. It is still in progress.
+![](example.png)
+
+This program parses the [NGINX](https://nginx.org/en/) access logs of [mirror.clarkson.edu](https://mirror.clarkson.edu), extracts geoip information, and streams data to clients over websockets.
+
+## GeoLite2 Attribution
+
+This software includes GeoLite2 data created by MaxMind, available from [www.maxmind.com](https://www.maxmind.com)
