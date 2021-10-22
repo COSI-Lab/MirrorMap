@@ -72,11 +72,16 @@ func fileIn(clients map[string]chan []byte) {
 		lat := results.Location.Latitude
 		// fmt.Println(long, lat)
 
-		clients_lock.Lock()
-		for _, ch := range clients {
-			ch <- []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro]))
+		clients_lock.RLock()
+		for client, ch := range clients {
+			select {
+			case ch <- []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro])):
+				// Do nothing
+			default:
+				log.Printf("%s blocking", client)
+			}
 		}
-		clients_lock.Unlock()
+		clients_lock.RUnlock()
 	}
 }
 
@@ -103,18 +108,19 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		conn.Close()
-		log.Printf("%s disconnected!", id)
+		clients_lock.Lock()
+		log.Printf("socket w lock")
+		log.Printf("Error sending message %s : %s", id, err)
+		delete(clients, id)
+		clients_lock.Unlock()
+		log.Printf("socket w unlock")
 	}()
 
 	for {
 		val := <-ch
 		err = conn.WriteMessage(1, val)
 		if err != nil {
-			clients_lock.Lock()
-			log.Printf("Error sending message %s : %s", id, err)
-			delete(clients, id)
-			clients_lock.Unlock()
-			return
+			break
 		}
 	}
 }
@@ -123,8 +129,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	id := randstr.Hex(16)
 
 	clients_lock.Lock()
-	clients[id] = make(chan []byte)
+	log.Printf("registerHandler w lock")
+	clients[id] = make(chan []byte, 10)
 	clients_lock.Unlock()
+	log.Printf("registerHandler w unlock")
 	log.Printf("new connection registered: %s\n", id)
 
 	// Send id to client
