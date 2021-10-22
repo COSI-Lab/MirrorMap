@@ -25,8 +25,6 @@ var clients map[string]chan []byte
 var clients_lock sync.RWMutex
 
 var upgrader = websocket.Upgrader{} // use default options
-var interrupt2 chan os.Signal
-var done2 chan interface{}
 
 func getIp(line string) string {
 	foundIp := strings.SplitN(line, "-", 2)[0]
@@ -44,22 +42,26 @@ func fileIn(clients map[string]chan []byte) {
 	for i, dist := range distList {
 		distMap[dist] = i
 	}
+	// Create a map of dists and give them an id, hashing a map is quicker than an array
 
 	scanner := bufio.NewScanner(os.Stdin)
+	// Iterate through stdin
 	for scanner.Scan() {
 		line := scanner.Text()
 		ip := getIp(line)
 		if ip == "" {
 			continue
 		}
+		//make sure ip is valid ip
 		ipNew := net.ParseIP(strings.TrimSpace(ip))
 		results, err := db.City(ipNew)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		reGet := regexp.MustCompile(`\/(.*?)\/`)
-		listDistro := reGet.FindAllString(line, -1)
+		// get distro, use regex to find the distro
+		reDist := regexp.MustCompile(`\/(.*?)\/`)
+		listDistro := reDist.FindAllString(line, -1)
 		nfoundDistro := ""
 		if len(listDistro) < 2 {
 			continue
@@ -67,15 +69,16 @@ func fileIn(clients map[string]chan []byte) {
 		foundDistro := strings.SplitN(listDistro[1], " ", -1)
 		nfoundDistro = strings.Join(foundDistro, "")
 		nfoundDistro = strings.Replace(nfoundDistro, "/", "", -1)
-
+		// do some formating to distro to make it so I can hash it
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		// fmt.Println(long, lat)
+		//get long and lat
 
+		msg := []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro]))
 		clients_lock.RLock()
 		for client, ch := range clients {
 			select {
-			case ch <- []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro])):
+			case ch <- msg:
 				// Do nothing
 			default:
 				log.Printf("%s blocking", client)
@@ -86,6 +89,7 @@ func fileIn(clients map[string]chan []byte) {
 }
 
 func socketHandler(w http.ResponseWriter, r *http.Request) {
+	// Handles the websocket
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -107,6 +111,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
+		// Close connection gracefully
 		conn.Close()
 		clients_lock.Lock()
 		log.Printf("socket w lock")
@@ -117,7 +122,9 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	for {
+		// Reciever byte array
 		val := <-ch
+		// Send message across websocket
 		err = conn.WriteMessage(1, val)
 		if err != nil {
 			break
@@ -127,6 +134,8 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	id := randstr.Hex(16)
+	// Create UUID but badly
+	// Should work as we arent serving enough clients were psuedo random will mess us up
 
 	clients_lock.Lock()
 	log.Printf("registerHandler w lock")
@@ -141,7 +150,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	// Send id to client
+	// Return list of active clients
+	// Mostly for diagnostic purposes
 	w.WriteHeader(200)
 	w.Write([]byte(fmt.Sprint(len(clients))))
 }
@@ -171,8 +181,8 @@ func main() {
 	r.HandleFunc("/health", healthHandler)
 	r.HandleFunc("/register", registerHandler)
 	r.HandleFunc("/socket/{id}", socketHandler)
-	// r.HandleFunc("/", home)
 
+	// Handle homepage, ugly but works
 	r.PathPrefix("/").Handler(http.FileServer(HTMLStrippingFileSystem{http.Dir("static")})).Methods("GET")
 
 	// Serve on 8080
