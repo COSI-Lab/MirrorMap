@@ -44,22 +44,26 @@ func fileIn(clients map[string]chan []byte) {
 	for i, dist := range distList {
 		distMap[dist] = i
 	}
+	// Create a map of dists and give them an id, hashing a map is quicker than an array
 
 	scanner := bufio.NewScanner(os.Stdin)
+	// Iterate through stdin
 	for scanner.Scan() {
 		line := scanner.Text()
 		ip := getIp(line)
 		if ip == "" {
 			continue
 		}
+		//make sure ip is valid ip
 		ipNew := net.ParseIP(strings.TrimSpace(ip))
 		results, err := db.City(ipNew)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		reGet := regexp.MustCompile(`\/(.*?)\/`)
-		listDistro := reGet.FindAllString(line, -1)
+		// get distro, use regex to find the distro
+		reDist := regexp.MustCompile(`\/(.*?)\/`)
+		listDistro := reDist.FindAllString(line, -1)
 		nfoundDistro := ""
 		if len(listDistro) < 2 {
 			continue
@@ -67,20 +71,26 @@ func fileIn(clients map[string]chan []byte) {
 		foundDistro := strings.SplitN(listDistro[1], " ", -1)
 		nfoundDistro = strings.Join(foundDistro, "")
 		nfoundDistro = strings.Replace(nfoundDistro, "/", "", -1)
-
+		// do some formating to distro to make it so I can hash it
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		// fmt.Println(long, lat)
+		//get long and lat
 
+		// turn long, lat, and distro to byte array to send
+		// TODO: Compress data better
+		msg := []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro]))
 		clients_lock.Lock()
 		for _, ch := range clients {
-			ch <- []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro]))
+			// Add msg to channel for sending messages
+			// Have to do it this way as websocket handler is seperate function
+			ch <- msg
 		}
 		clients_lock.Unlock()
 	}
 }
 
 func socketHandler(w http.ResponseWriter, r *http.Request) {
+	// Handles the websocket
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -102,14 +112,18 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
+		// Close connection gracefully
 		conn.Close()
 		log.Printf("%s disconnected!", id)
 	}()
 
 	for {
+		// Reciever byte array
 		val := <-ch
+		// Send message across websocket
 		err = conn.WriteMessage(1, val)
 		if err != nil {
+			// If err, lock client list while removing from it
 			clients_lock.Lock()
 			log.Printf("Error sending message %s : %s", id, err)
 			delete(clients, id)
@@ -121,9 +135,12 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	id := randstr.Hex(16)
+	// Create UUID but badly
+	// Should work as we arent serving enough clients were psuedo random will mess us up
 
 	clients_lock.Lock()
 	clients[id] = make(chan []byte)
+	// When someone registers add them to the client list
 	clients_lock.Unlock()
 	log.Printf("new connection registered: %s\n", id)
 
@@ -133,7 +150,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	// Send id to client
+	// Return list of active clients
+	// Mostly for diagnostic purposes
 	w.WriteHeader(200)
 	w.Write([]byte(fmt.Sprint(len(clients))))
 }
@@ -163,8 +181,8 @@ func main() {
 	r.HandleFunc("/health", healthHandler)
 	r.HandleFunc("/register", registerHandler)
 	r.HandleFunc("/socket/{id}", socketHandler)
-	// r.HandleFunc("/", home)
 
+	// Handle homepage, ugly but works
 	r.PathPrefix("/").Handler(http.FileServer(HTMLStrippingFileSystem{http.Dir("static")})).Methods("GET")
 
 	// Serve on 8080
