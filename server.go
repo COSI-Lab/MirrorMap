@@ -32,7 +32,7 @@ func getIp(line string) string {
 }
 
 func fileIn(clients map[string]chan []byte) {
-	db, err := geoip2.Open("logs/GeoLite2-City.mmdb")
+	db, err := geoip2.Open("GeoLite2-City.mmdb")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -114,11 +114,9 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		// Close connection gracefully
 		conn.Close()
 		clients_lock.Lock()
-		log.Printf("socket w lock")
 		log.Printf("Error sending message %s : %s", id, err)
 		delete(clients, id)
 		clients_lock.Unlock()
-		log.Printf("socket w unlock")
 	}()
 
 	for {
@@ -138,10 +136,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	// Should work as we arent serving enough clients were psuedo random will mess us up
 
 	clients_lock.Lock()
-	log.Printf("registerHandler w lock")
 	clients[id] = make(chan []byte, 10)
 	clients_lock.Unlock()
-	log.Printf("registerHandler w unlock")
 	log.Printf("new connection registered: %s\n", id)
 
 	// Send id to client
@@ -190,6 +186,6 @@ func main() {
 		Addr:    ":8000",
 		Handler: r,
 	}
-	log.Printf("Serving on localhost:%d", 8000)
+	log.Printf("Serving on http://localhost:%d", 8000)
 	log.Fatalf("%s", s.ListenAndServe())
 }

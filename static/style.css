@@ -4,3 +4,12 @@ html, body {
     overflow: hidden !important;
     background-color: black;
 }
+
+canvas {
+    position: absolute;
+    bottom: 0px;
+}
+
+div {
+    color: white;
+}
