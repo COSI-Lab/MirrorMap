@@ -1,6 +1,6 @@
 # MirrorMap
 
-![](example.png)
+![](mirrormap.png)
 
 This program parses the [NGINX](https://nginx.org/en/) access logs of [mirror.clarkson.edu](https://mirror.clarkson.edu), extracts geoip information, and streams data to clients over websockets.
 
