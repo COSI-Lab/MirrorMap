@@ -34,7 +34,7 @@ func getIp(line string) string {
 }
 
 func fileIn(clients map[string]chan []byte) {
-	db, err := geoip2.Open("GeoLite2-City.mmdb")
+	db, err := geoip2.Open("logs/GeoLite2-City.mmdb")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -95,7 +95,7 @@ func fileIn(clients map[string]chan []byte) {
 			// Have to do it this way as websocket handler is seperate function
 			ch <- msg
 		}
-		clients_lock.RUnlock()
+		clients_lock.Unlock()
 	}
 }
 
