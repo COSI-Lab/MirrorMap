@@ -76,20 +76,19 @@ func fileIn(clients map[string]chan []byte) {
 		// do some formating to distro to make it so I can hash it
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		fmt.Println(long, lat)
 		//convert lat to string
 
 		distByte := byte(distMap[nfoundDistro])
 
 		var latByte [8]byte
-		binary.BigEndian.PutUint64(latByte[:], math.Float64bits(lat))
+		binary.LittleEndian.PutUint64(latByte[:], math.Float64bits(lat))
 		fmt.Println(latByte[:])
 
 		var longByte [8]byte
-		binary.BigEndian.PutUint64(longByte[:], math.Float64bits(long))
+		binary.LittleEndian.PutUint64(longByte[:], math.Float64bits(long))
 		fmt.Println(longByte[:])
 
-		// turn dist, long, and lat to byte array to send
+		// turn dist, lat, and long to byte array to send
 		msg := []byte{distByte}
 		msg = append(msg, latByte[:]...)
 		msg = append(msg, longByte[:]...)
