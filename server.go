@@ -3,8 +3,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -78,15 +80,19 @@ func fileIn(clients map[string]chan []byte) {
 		//convert lat to string
 
 		distByte := byte(distMap[nfoundDistro])
-		longByte := byte(long)
-		latByte := byte(lat)
 
-		// convert long to uint64
+		var latByte [8]byte
+		binary.BigEndian.PutUint64(latByte[:], math.Float64bits(lat))
+		fmt.Println(latByte[:])
 
-		// convert dist, lat, long to byte
+		var longByte [8]byte
+		binary.BigEndian.PutUint64(longByte[:], math.Float64bits(long))
+		fmt.Println(longByte[:])
 
 		// turn dist, long, and lat to byte array to send
-		msg := []byte{distByte, longByte, latByte}
+		msg := []byte{distByte}
+		msg = append(msg, latByte[:]...)
+		msg = append(msg, longByte[:]...)
 
 		clients_lock.Lock()
 		for _, ch := range clients {

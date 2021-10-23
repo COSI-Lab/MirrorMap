@@ -34,8 +34,31 @@
 
                 console.log(buffer);
 
-                // let lat = parseFloat(buffer[2], 2);
-                // let long = parseFloat(buffer[1], 2);
+                let latByte = buffer.slice(1, 9);
+                let longByte = buffer.slice(9, 17);
+
+                console.log(latByte);
+                console.log(longByte);
+
+                var latBuf = new ArrayBuffer(8);
+                var latView = new DataView(latBuf);
+                latByte.forEach(function (b, i) {
+                  latView.setUint8(i, b);
+                });
+
+                var lat = latView.getFloat64(0, true);
+
+                var longBuf = new ArrayBuffer(8);
+                var longView = new DataView(longBuf);
+                longByte.forEach(function (b, i) {
+                  longView.setUint8(i, b);
+                });
+
+                var long = longView.getFloat64(0, true);
+
+                
+                console.log(lat);
+                console.log(long);
 
                 let distro = parseFloat(buffer[0], 2);
 
