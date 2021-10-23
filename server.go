@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/thanhpk/randstr"
 )
@@ -25,12 +26,28 @@ import (
 // Globals
 var clients map[string]chan []byte
 var clients_lock sync.RWMutex
+var MAXMIND_KEY string
+var maxmindLastModified string = ""
 
 var upgrader = websocket.Upgrader{} // use default options
 
 func getIp(line string) string {
 	foundIp := strings.SplitN(line, "-", 2)[0]
 	return foundIp
+}
+
+func updateDB() {
+	url := "https://download.maxmind.com/app/geoip_download?suffix=tar.gz&edition_id=GeoLite2-City&license_key=" + MAXMIND_KEY
+	resp, err := http.Head(url)
+
+	if err != nil {
+		log.Println("Failed to update maxmind database", err)
+		return
+	}
+
+	lastModified = resp.Header.Get("last-modified")
+
+	if maxmind_last_updated != lastModified
 }
 
 func fileIn(clients map[string]chan []byte) {
@@ -93,7 +110,11 @@ func fileIn(clients map[string]chan []byte) {
 		for _, ch := range clients {
 			// Add msg to channel for sending messages
 			// Have to do it this way as websocket handler is seperate function
-			ch <- msg
+			select {
+			case ch <- msg:
+			default:
+				// the channel is blocking so we drop the data
+			}
 		}
 		clients_lock.Unlock()
 	}
@@ -168,6 +189,17 @@ type HTMLStrippingFileSystem struct {
 }
 
 func main() {
+	// Read environment variables
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	if MAXMIND_KEY, ok := os.LookupEnv("MAXMIND_KEY"); ok {
+		log.Fatal("MAXMIND_KEY not defined in .env file")
+	}
+
 	// Create a type safe Map for strings to channels
 	clients = make(map[string]chan []byte)
 
