@@ -27,8 +27,6 @@ var clients map[string]chan []byte
 var clients_lock sync.RWMutex
 
 var upgrader = websocket.Upgrader{} // use default options
-var interrupt2 chan os.Signal
-var done2 chan interface{}
 
 func getIp(line string) string {
 	foundIp := strings.SplitN(line, "-", 2)[0]
@@ -36,7 +34,7 @@ func getIp(line string) string {
 }
 
 func fileIn(clients map[string]chan []byte) {
-	db, err := geoip2.Open("logs/GeoLite2-City.mmdb")
+	db, err := geoip2.Open("GeoLite2-City.mmdb")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -97,7 +95,7 @@ func fileIn(clients map[string]chan []byte) {
 			// Have to do it this way as websocket handler is seperate function
 			ch <- msg
 		}
-		clients_lock.Unlock()
+		clients_lock.RUnlock()
 	}
 }
 
@@ -126,7 +124,10 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		// Close connection gracefully
 		conn.Close()
-		log.Printf("%s disconnected!", id)
+		clients_lock.Lock()
+		log.Printf("Error sending message %s : %s", id, err)
+		delete(clients, id)
+		clients_lock.Unlock()
 	}()
 
 	for {
@@ -135,12 +136,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		// Send message across websocket
 		err = conn.WriteMessage(2, val)
 		if err != nil {
-			// If err, lock client list while removing from it
-			clients_lock.Lock()
-			log.Printf("Error sending message %s : %s", id, err)
-			delete(clients, id)
-			clients_lock.Unlock()
-			return
+			break
 		}
 	}
 }
@@ -151,8 +147,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	// Should work as we arent serving enough clients were psuedo random will mess us up
 
 	clients_lock.Lock()
-	clients[id] = make(chan []byte)
-	// When someone registers add them to the client list
+	clients[id] = make(chan []byte, 10)
 	clients_lock.Unlock()
 	log.Printf("new connection registered: %s\n", id)
 
@@ -202,6 +197,6 @@ func main() {
 		Addr:    ":8000",
 		Handler: r,
 	}
-	log.Printf("Serving on localhost:%d", 8000)
+	log.Printf("Serving on http://localhost:%d", 8000)
 	log.Fatalf("%s", s.ListenAndServe())
 }

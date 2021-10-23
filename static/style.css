@@ -2,4 +2,14 @@ html, body {
     margin: 0px !important;
     padding: 0px !important;
     overflow: hidden !important;
+    background-color: black;
+}
+
+canvas {
+    position: absolute;
+    bottom: 0px;
+}
+
+div {
+    color: white;
 }

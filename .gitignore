@@ -1,7 +1,1 @@
-.env
-access.log.2
-config.yml
-./influxdb
-./influxdb.conf
-main
-m.exe
+GeoLite2-City.mmdb
