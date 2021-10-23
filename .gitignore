@@ -1,2 +1,2 @@
-GeoLite2-City.mmdb
-access.log.2
+logs/access.log.2
+logs/GeoLite2-City.mmdb
