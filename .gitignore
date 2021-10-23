@@ -1,3 +1,4 @@
 logs/access.log.2
 logs/GeoLite2-City.mmdb
 *.py
+*.mmdb
