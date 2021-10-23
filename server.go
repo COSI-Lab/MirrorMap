@@ -74,11 +74,20 @@ func fileIn(clients map[string]chan []byte) {
 		// do some formating to distro to make it so I can hash it
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		//get long and lat
+		fmt.Println(long, lat)
+		//convert lat to string
 
-		// turn long, lat, and distro to byte array to send
-		// TODO: Compress data better
-		msg := []byte(fmt.Sprintf("%f:%f:%d", long, lat, distMap[nfoundDistro]))
+		distByte := byte(distMap[nfoundDistro])
+		longByte := byte(long)
+		latByte := byte(lat)
+
+		// convert long to uint64
+
+		// convert dist, lat, long to byte
+
+		// turn dist, long, and lat to byte array to send
+		msg := []byte{distByte, longByte, latByte}
+
 		clients_lock.Lock()
 		for _, ch := range clients {
 			// Add msg to channel for sending messages
@@ -121,7 +130,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		// Reciever byte array
 		val := <-ch
 		// Send message across websocket
-		err = conn.WriteMessage(1, val)
+		err = conn.WriteMessage(2, val)
 		if err != nil {
 			// If err, lock client list while removing from it
 			clients_lock.Lock()

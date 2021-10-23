@@ -19,18 +19,33 @@
             // Let us open a web socket
             var url = "ws://" + location.host + "/socket/" + id;
             var ws = new WebSocket(url);
+            ws.binaryType = "blob"
+            var buffer;
 
             ws.onmessage = function (evt) {
-              var msg = evt.data;
-              let [lat, long, distro] = msg.split(":");
-              lat = parseFloat(lat);
-              long = parseFloat(long);
-              distro = parseInt(distro);
-              let x = (lat + 180) / 360;
-              let y = (90 - long) / 180;
-              distros[distro][2] += 1;
-              // Add new data points to the front of the list
-              circles.unshift([x, y, distro, new Date().getTime()]);
+              var reader = new FileReader();
+              var msg;
+
+              reader.readAsArrayBuffer(evt.data);
+              reader.addEventListener("loadend", function(e)
+              {
+                buffer = new Uint8Array(reader.result);
+                // console.log(String.fromCharCode(convertToDecimal(buffer[2])));
+
+                console.log(buffer);
+
+                // let lat = parseFloat(buffer[2], 2);
+                // let long = parseFloat(buffer[1], 2);
+
+                let distro = parseFloat(buffer[0], 2);
+
+                let x = (lat + 180) / 360;
+                let y = (90 - long) / 180;
+                distros[distro][2] += 1;
+                // Add new data points to the front of the list
+                circles.unshift([x, y, distro, new Date().getTime()]);
+
+              });
             };
 
             ws.onclose = function () {
