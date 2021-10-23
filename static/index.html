@@ -4,78 +4,7 @@
   <head>
     <link rel="stylesheet" href="style.css" />
     <title>Mirror Map</title>
-    <script type="text/javascript">
-      function WebSocketTest() {
-        let xhr = new XMLHttpRequest();
-        xhr.open("GET", "/register");
-        xhr.setRequestHeader("Access-Control-Allow-Headers", "*");
-        xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
-        xhr.send();
-
-        xhr.onload = function () {
-          console.log("id:", xhr.response);
-          var id = xhr.response;
-
-          if ("WebSocket" in window) {
-            // Let us open a web socket
-            var url = "ws://" + location.host + "/socket/" + id;
-            var ws = new WebSocket(url);
-            ws.binaryType = "blob"
-            var buffer;
-
-            ws.onmessage = function (evt) {
-              var reader = new FileReader();
-              var msg;
-
-              reader.readAsArrayBuffer(evt.data);
-              reader.addEventListener("loadend", function(e)
-              {
-                buffer = new Uint8Array(reader.result);
-                // console.log(String.fromCharCode(convertToDecimal(buffer[2])));
-
-                let distro = parseFloat(buffer[0], 2);
-
-                let longByte = buffer.slice(1, 9);
-                let latByte = buffer.slice(9, 17);
-
-                let latBuf = new ArrayBuffer(8);
-                let latView = new DataView(latBuf);
-                latByte.forEach(function (b, i) {
-                  latView.setUint8(i, b);
-                });
-
-                let lat = latView.getFloat64(0, true);
-
-                let longBuf = new ArrayBuffer(8);
-                let longView = new DataView(longBuf);
-                longByte.forEach(function (b, i) {
-                  longView.setUint8(i, b);
-                });
-
-                let long = longView.getFloat64(0, true);
-
-                let x = (lat + 180) / 360;
-                let y = (90 - long) / 180;
-                distros[distro][2] += 1;
-                // Add new data points to the front of the list
-                circles.unshift([x, y, distro, new Date().getTime()]);
-
-              });
-            };
-
-            ws.onclose = function () {
-              // websocket is closed.
-              alert("Connection is closed\nrefresh to connect");
-            };
-          } else {
-            // The browser doesn't support WebSocket
-            alert(
-              "This site will not work since\nyour browser does not support websockets"
-            );
-          }
-        };
-      }
-    </script>
+    <script src="/index.js"> </script>
   </head>
   <body>
     <img id="map" src="map.jpg" alt="" style="display: none" />

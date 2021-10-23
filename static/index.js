@@ -66,16 +66,43 @@ function WebSocketTest() {
       var ws = new WebSocket(url);
 
       ws.onmessage = function (evt) {
-        var msg = evt.data;
-        let [lat, long, distro] = msg.split(":");
-        lat = parseFloat(lat);
-        long = parseFloat(long);
-        distro = parseInt(distro);
-        let x = (lat + 180) / 360;
-        let y = (90 - long) / 180;
-        distros[distro][2] += 1;
-        // Add new data points to the front of the list
-        circles.unshift([x, y, distro, new Date().getTime()]);
+        var reader = new FileReader();
+        var msg;
+
+        reader.readAsArrayBuffer(evt.data);
+        reader.addEventListener("loadend", function(e)
+        {
+          buffer = new Uint8Array(reader.result);
+          // console.log(String.fromCharCode(convertToDecimal(buffer[2])));
+
+          let distro = parseFloat(buffer[0], 2);
+
+          let longByte = buffer.slice(1, 9);
+          let latByte = buffer.slice(9, 17);
+
+          let latBuf = new ArrayBuffer(8);
+          let latView = new DataView(latBuf);
+          latByte.forEach(function (b, i) {
+            latView.setUint8(i, b);
+          });
+
+          let lat = latView.getFloat64(0, true);
+
+          let longBuf = new ArrayBuffer(8);
+          let longView = new DataView(longBuf);
+          longByte.forEach(function (b, i) {
+            longView.setUint8(i, b);
+          });
+
+          let long = longView.getFloat64(0, true);
+
+          let x = (lat + 180) / 360;
+          let y = (90 - long) / 180;
+          distros[distro][2] += 1;
+          // Add new data points to the front of the list
+          circles.unshift([x, y, distro, new Date().getTime()]);
+
+        });
       };
 
       ws.onclose = function () {
