@@ -1,3 +1,4 @@
 logs/
 *.py
 .env
+GeoLite2-City.mmdb*
