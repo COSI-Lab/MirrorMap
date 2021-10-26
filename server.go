@@ -47,14 +47,20 @@ func fileIn(clients map[string]chan []byte) {
 	}
 	// Create a map of dists and give them an id, hashing a map is quicker than an array
 
+	prevIp := ""
+
 	scanner := bufio.NewScanner(os.Stdin)
 	// Iterate through stdin
 	for scanner.Scan() {
 		line := scanner.Text()
 		ip := getIp(line)
+		if ip == prevIp {
+			continue
+		}
 		if ip == "" {
 			continue
 		}
+		prevIp = ip
 		//make sure ip is valid ip
 		ipNew := net.ParseIP(strings.TrimSpace(ip))
 		results, err := db.City(ipNew)
