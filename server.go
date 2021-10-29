@@ -87,9 +87,11 @@ func fileIn(clients map[string]chan []byte) {
 
 		var latByte [8]byte
 		binary.LittleEndian.PutUint64(latByte[:], math.Float64bits(lat))
+		// convert lat to little endian Uint8 array
 
 		var longByte [8]byte
 		binary.LittleEndian.PutUint64(longByte[:], math.Float64bits(long))
+		// convert long to little endian Uint8 array
 
 		// turn dist, lat, and long to byte array to send
 		msg := []byte{distByte}
