@@ -73,18 +73,23 @@ function WebSocketTest() {
         reader.addEventListener("loadend", function(e)
         {
           buffer = new Uint8Array(reader.result);
-          // console.log(String.fromCharCode(convertToDecimal(buffer[2])));
 
           let distro = parseFloat(buffer[0], 2);
 
+          // Split the byte array into longByte and latByte
           let longByte = buffer.slice(1, 9);
           let latByte = buffer.slice(9, 17);
 
+          // Convert the bytes to floats
+          // Create new buffer
+          // apply buffer to dataview
           let latBuf = new ArrayBuffer(8);
           let latView = new DataView(latBuf);
           latByte.forEach(function (b, i) {
             latView.setUint8(i, b);
           });
+          // Swap bytes around becuase little endian encoding
+          // Repeat for lat
 
           let lat = latView.getFloat64(0, true);
 
@@ -96,6 +101,7 @@ function WebSocketTest() {
 
           let long = longView.getFloat64(0, true);
 
+          // Convert into x and y coordinates and put them on scale of 0-1
           let x = (lat + 180) / 360;
           let y = (90 - long) / 180;
           distros[distro][2] += 1;
@@ -153,7 +159,7 @@ window.onload = async function () {
         break;
       }
 
-      ctx.fillStyle = distros[circle[2]][1];
+      ctx.fillStyle = distros[circle[2]][1]; // This is ugly but it works
       ctx.beginPath();
       ctx.globalAlpha = 1 - delta / DISPLAY_TIME;
       ctx.arc(
