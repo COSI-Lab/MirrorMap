@@ -172,6 +172,15 @@ type HTMLStrippingFileSystem struct {
 	http.FileSystem
 }
 
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Do stuff here
+		log.Println(r.RequestURI)
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// Read environment variables
 	err := godotenv.Load(".env")
@@ -197,18 +206,20 @@ func main() {
 
 	// gorilla/mux router
 	r := mux.NewRouter()
-	r.HandleFunc("/health", healthHandler)
-	r.HandleFunc("/register", registerHandler)
-	r.HandleFunc("/socket/{id}", socketHandler)
 
-	// Handle homepage, ugly but works
-	r.PathPrefix("/").Handler(http.FileServer(HTMLStrippingFileSystem{http.Dir("static")})).Methods("GET")
+	r.HandleFunc("/map/health", healthHandler)
+	r.HandleFunc("/map/register", registerHandler)
+	r.HandleFunc("/map/socket/{id}", socketHandler)
+	r.PathPrefix("/map").Handler(http.StripPrefix("/map", http.FileServer(http.Dir("static"))))
+
+	r.Use(loggingMiddleware)
 
 	// Serve on 8080
-	s := &http.Server{
+	l := &http.Server{
 		Addr:    ":8000",
 		Handler: r,
 	}
-	log.Printf("Serving on http://localhost:%d", 8000)
-	log.Fatalf("%s", s.ListenAndServe())
+
+	log.Printf("Serving on http://localhost:%d/map", 8000)
+	log.Fatalf("%s", l.ListenAndServe())
 }

@@ -52,7 +52,7 @@ const distros = [
 
 function WebSocketTest() {
   let xhr = new XMLHttpRequest();
-  xhr.open("GET", "/register");
+  xhr.open("GET", "/map/register");
   xhr.setRequestHeader("Access-Control-Allow-Headers", "*");
   xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
   xhr.send();
@@ -62,7 +62,7 @@ function WebSocketTest() {
 
     if ("WebSocket" in window) {
       // Let us open a web socket
-      var url = "ws://" + location.host + "/socket/" + id;
+      var url = "wss://" + location.host + "/map/socket/" + id;
       var ws = new WebSocket(url);
 
       ws.onmessage = function (evt) {
