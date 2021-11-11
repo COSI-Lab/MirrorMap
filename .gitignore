@@ -2,3 +2,4 @@ logs/
 *.py
 .env
 GeoLite2-City.mmdb*
+.DS_Store

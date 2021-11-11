@@ -133,7 +133,7 @@ window.onload = async function () {
 
   window.onresize = function () {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.height = window.innerHeight * 0.90;
   };
 
   window.onresize();
@@ -145,7 +145,7 @@ window.onload = async function () {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     for (let i = 0; i < circles.length; i++) {
-      circle = circles[i];
+      let circle = circles[i];
       distros[circle[2]][3] = 1;
 
       // Time difference

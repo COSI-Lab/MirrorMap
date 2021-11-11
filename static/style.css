@@ -8,8 +8,17 @@ html, body {
 canvas {
     position: absolute;
     bottom: 0px;
+    top: 10%;
+}
+
+a {
+    color: inherit;
+    text-decoration: underline;
 }
 
 div {
+    padding-left: 10px;
+    padding-right: 10px;
+    height: 5%;
     color: white;
 }
