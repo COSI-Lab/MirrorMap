@@ -4,6 +4,7 @@ var circles = [];
 
 // distroID, color, counter, isPresent
 const distros = [
+  ["almalinux", "#7851a9", 0, 0],
   ["alpine", "#cd5700", 0, 0],
   ["archlinux", "#f0d4f0", 0, 0],
   ["archlinux32", "#d8bfd8", 0, 0],
