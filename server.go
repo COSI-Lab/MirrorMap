@@ -40,58 +40,85 @@ func fileIn(clients map[string]chan []byte) {
 		fmt.Println(err)
 		return
 	}
+
+	// Create a map of dists and give them an id, hashing a map is quicker than an array
 	distList := []string{"alpine", "archlinux", "archlinux32", "artix-linux", "blender", "centos", "clonezilla", "cpan", "cran", "ctan", "cygwin", "debian", "debian-cd", "eclipse", "freebsd", "gentoo", "gentoo-portage", "gparted", "ipfire", "isabelle", "linux", "linuxmint", "manjaro", "msys2", "odroid", "openbsd", "opensuse", "parrot", "raspbian", "RebornOS", "ros", "sabayon", "serenity", "slackware", "slitaz", "tdf", "templeos", "ubuntu", "ubuntu-cdimage", "ubuntu-ports", "ubuntu-releases", "videolan", "voidlinux", "zorinos"}
 	distMap := make(map[string]int)
 	for i, dist := range distList {
 		distMap[dist] = i
 	}
-	// Create a map of dists and give them an id, hashing a map is quicker than an array
 
+	// Track the previous IP to avoid sending duplicate data
+	prevSkip := false
 	prevIp := ""
-
 	scanner := bufio.NewScanner(os.Stdin)
 	// Iterate through stdin
 	for scanner.Scan() {
-		line := scanner.Text()
-		ip := getIp(line)
-		if ip == prevIp {
+		// If there are no connected clients skip the line
+		clients_lock.RLock()
+		skip := len(clients) == 0
+		clients_lock.RUnlock()
+
+		if prevSkip != skip {
+			prevSkip = skip
+			if skip {
+				log.Println("All clients disconnected, skipping...")
+			} else {
+				log.Println("A new client connected, no longer skipping")
+			}
+		}
+
+		if skip {
 			continue
 		}
+
+		line := scanner.Text()
+
+		// Parse the ip
+		ip := getIp(line)
+		if ip == prevIp {
+			// if the ips are the same skip the line
+			continue
+		}
+
 		if ip == "" {
 			continue
 		}
-		prevIp = ip
-		//make sure ip is valid ip
+
+		// Check the validity of the ip
 		ipNew := net.ParseIP(strings.TrimSpace(ip))
 		results, err := db.City(ipNew)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		// get distro, use regex to find the distro
+
+		// use a regular expression to extra the distro
 		reDist := regexp.MustCompile(`\/(.*?)\/`)
 		listDistro := reDist.FindAllString(line, -1)
 		nfoundDistro := ""
 		if len(listDistro) < 2 {
 			continue
 		}
+
+		// do some formating to distro to make it so I can hash it
 		foundDistro := strings.SplitN(listDistro[1], " ", -1)
 		nfoundDistro = strings.Join(foundDistro, "")
 		nfoundDistro = strings.Replace(nfoundDistro, "/", "", -1)
-		// do some formating to distro to make it so I can hash it
+
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
-		//convert lat to string
 
+		// convert lat to string
 		distByte := byte(distMap[nfoundDistro])
 
+		// convert lat to little endian Uint8 array
 		var latByte [8]byte
 		binary.LittleEndian.PutUint64(latByte[:], math.Float64bits(lat))
-		// convert lat to little endian Uint8 array
 
+		// convert long to little endian Uint8 array
 		var longByte [8]byte
 		binary.LittleEndian.PutUint64(longByte[:], math.Float64bits(long))
-		// convert long to little endian Uint8 array
 
 		// turn dist, lat, and long to byte array to send
 		msg := []byte{distByte}
@@ -99,13 +126,12 @@ func fileIn(clients map[string]chan []byte) {
 		msg = append(msg, longByte[:]...)
 
 		clients_lock.Lock()
+		// send the message to each client
 		for _, ch := range clients {
-			// Add msg to channel for sending messages
-			// Have to do it this way as websocket handler is seperate function
 			select {
 			case ch <- msg:
 			default:
-				// the channel is blocking so we drop the data
+				// if the client is blocking we skip it
 			}
 		}
 		clients_lock.Unlock()
@@ -134,15 +160,6 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer func() {
-		// Close connection gracefully
-		conn.Close()
-		clients_lock.Lock()
-		log.Printf("Error sending message %s : %s", id, err)
-		delete(clients, id)
-		clients_lock.Unlock()
-	}()
-
 	for {
 		// Reciever byte array
 		val := <-ch
@@ -152,12 +169,19 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
+	// Close connection gracefully
+	conn.Close()
+	clients_lock.Lock()
+	log.Printf("Error sending message %s : %s", id, err)
+	delete(clients, id)
+	clients_lock.Unlock()
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-	id := randstr.Hex(16)
 	// Create UUID but badly
 	// Should work as we arent serving enough clients were psuedo random will mess us up
+	id := randstr.Hex(16)
 
 	clients_lock.Lock()
 	clients[id] = make(chan []byte, 10)
@@ -170,10 +194,11 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	// Return list of active clients
-	// Mostly for diagnostic purposes
+	// Send diagnostic information
+	clients_lock.RLock()
 	w.WriteHeader(200)
 	w.Write([]byte(fmt.Sprint(len(clients))))
+	clients_lock.RUnlock()
 }
 
 type HTMLStrippingFileSystem struct {
@@ -182,9 +207,7 @@ type HTMLStrippingFileSystem struct {
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Do stuff here
 		log.Println(r.RequestURI)
-		// Call the next handler, which can be another middleware in the chain, or the final handler.
 		next.ServeHTTP(w, r)
 	})
 }

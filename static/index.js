@@ -153,7 +153,6 @@ window.onload = async function () {
 
       // Remove old data points
       if (delta > DISPLAY_TIME) {
-        console.log("REMOVING ", circles.length - i);
         // We know all future indexes are older
         circles = circles.slice(0, i);
         break;
@@ -223,3 +222,7 @@ window.onload = async function () {
     await new Promise((r) => setTimeout(r, 15));
   }
 };
+
+window.onbeforeunload = function() {
+  ws.close()
+}
