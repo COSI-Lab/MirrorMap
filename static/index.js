@@ -51,7 +51,7 @@ const distros = [
   ["zorinos", "#fc6c85", 0, 0],
 ];
 
-function WebSocketTest() {
+function ConnectAndRecieve() {
   let xhr = new XMLHttpRequest();
   xhr.open("GET", "/map/register");
   xhr.setRequestHeader("Access-Control-Allow-Headers", "*");
@@ -114,7 +114,8 @@ function WebSocketTest() {
 
       ws.onclose = function () {
         // websocket is closed.
-        alert("Connection is closed\nrefresh to connect");
+        //alert("Connection is closed\nrefresh to connect");
+        reconnect();
       };
     } else {
       // The browser doesn't support WebSocket
@@ -123,6 +124,10 @@ function WebSocketTest() {
       );
     }
   };
+}
+
+function reconnect() {
+  WebSocketTest();
 }
 
 window.onload = async function () {
