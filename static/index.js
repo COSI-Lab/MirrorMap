@@ -127,11 +127,11 @@ function ConnectAndRecieve() {
 }
 
 function reconnect() {
-  WebSocketTest();
+  ConnectAndRecieve();
 }
 
 window.onload = async function () {
-  WebSocketTest();
+  ConnectAndRecieve();
 
   const canvas = document.getElementById("myCanvas");
   const ctx = canvas.getContext("2d");
