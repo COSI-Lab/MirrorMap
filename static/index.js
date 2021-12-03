@@ -68,7 +68,6 @@ function ConnectAndRecieve() {
 
       ws.onmessage = function (evt) {
         var reader = new FileReader();
-        var msg;
 
         reader.readAsArrayBuffer(evt.data);
         reader.addEventListener("loadend", function(e)
@@ -113,9 +112,10 @@ function ConnectAndRecieve() {
       };
 
       ws.onclose = function () {
-        // websocket is closed.
-        //alert("Connection is closed\nrefresh to connect");
-        reconnect();
+        console.log('Socket is closed. Reconnect will be attempted in 1 second.');
+        setTimeout(function() {
+          ConnectAndRecieve();
+        }, 1000);
       };
     } else {
       // The browser doesn't support WebSocket
@@ -124,10 +124,6 @@ function ConnectAndRecieve() {
       );
     }
   };
-}
-
-function reconnect() {
-  ConnectAndRecieve();
 }
 
 window.onload = async function () {
