@@ -32,7 +32,7 @@ const distros = [
   ["odroid", "#536895", 0, 0],
   ["openbsd", "#ffb300", 0, 0],
   ["opensuse", "#35b9ab", 0, 0],
-  ["parrot", "#ff6fff", 0, 0],
+  ["parrot", "#57CBCC", 0, 0],
   ["raspbian", "#c51d4a", 0, 0],
   ["RebornOS", "#1e73be", 0, 0],
   ["ros", "#635147", 0, 0],
