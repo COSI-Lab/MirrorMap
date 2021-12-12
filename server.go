@@ -18,7 +18,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/joho/godotenv"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/thanhpk/randstr"
 )
@@ -214,11 +213,11 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 func main() {
 	// Read environment variables
-	err := godotenv.Load(".env")
+	// err := godotenv.Load(".env")
 
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	// if err != nil {
+	// 	log.Fatal("Error loading .env file")
+	// }
 
 	// Create a type safe Map for strings to channels
 	clients = make(map[string]chan []byte)

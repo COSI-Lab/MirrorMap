@@ -1,0 +1,10 @@
+[Unit]
+Description=Starts the MirrorMap service
+
+[Service]
+ExecStart=/bin/bash -c 'tail -F /var/log/nginx/access.log | /root/MirrorMap/MirrorMap'
+ExecStop=echo hello
+User=root
+
+[Install]
+WantedBy=multi-user.target
