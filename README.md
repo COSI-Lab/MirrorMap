@@ -10,6 +10,4 @@ This software includes GeoLite2 data created by MaxMind, available from [www.max
 
 ## NGNIX Log Format
 This must be the formatting for your NGNIX Logs if you wish for this tool to work
-log_format combined '"$remote_addr" "$time_local"'
-' "$request" "$status" "$body_bytes_sent"'
-' "$http_user_agent"';
+"$remote_addr" "$time_local" "$request" "$status" "$body_bytes_sent" "$request_length" "$http_user_agent";
