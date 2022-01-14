@@ -25,12 +25,17 @@ import (
 // Globals
 var clients map[string]chan []byte
 var clients_lock sync.RWMutex
+var reQuotes *regexp.Regexp
 
 var upgrader = websocket.Upgrader{} // use default options
 
-func getIp(line string) string {
-	foundIp := strings.SplitN(line, "-", 2)[0]
-	return foundIp
+func InitRegex() (err error) {
+	reQuotes, err = regexp.Compile(`"(.*?)"`)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func fileIn(clients map[string]chan []byte) {
@@ -53,6 +58,9 @@ func fileIn(clients map[string]chan []byte) {
 	scanner := bufio.NewScanner(os.Stdin)
 	// Iterate through stdin
 	for scanner.Scan() {
+		if reQuotes == nil {
+			InitRegex()
+		}
 		// If there are no connected clients skip the line
 		clients_lock.RLock()
 		skip := len(clients) == 0
@@ -74,7 +82,9 @@ func fileIn(clients map[string]chan []byte) {
 		line := scanner.Text()
 
 		// Parse the ip
-		ip := getIp(line)
+		quoteList := reQuotes.FindAllString(line, -1)
+		ip := quoteList[0]
+
 		if ip == prevIp {
 			// if the ips are the same skip the line
 			continue
@@ -92,24 +102,20 @@ func fileIn(clients map[string]chan []byte) {
 			return
 		}
 
+		listDistro := quoteList[2]
 		// use a regular expression to extra the distro
-		reDist := regexp.MustCompile(`\/(.*?)\/`)
-		listDistro := reDist.FindAllString(line, -1)
-		nfoundDistro := ""
 		if len(listDistro) < 2 {
 			continue
 		}
 
 		// do some formating to distro to make it so I can hash it
-		foundDistro := strings.SplitN(listDistro[1], " ", -1)
-		nfoundDistro = strings.Join(foundDistro, "")
-		nfoundDistro = strings.Replace(nfoundDistro, "/", "", -1)
+		distro := strings.Replace(listDistro, "/", "", -1)
 
 		long := results.Location.Longitude
 		lat := results.Location.Latitude
 
 		// convert lat to string
-		distByte := byte(distMap[nfoundDistro])
+		distByte := byte(distMap[distro])
 
 		// convert lat to little endian Uint8 array
 		var latByte [8]byte
